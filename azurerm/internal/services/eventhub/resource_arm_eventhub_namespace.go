@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/eventhub/mgmt/2017-04-01/eventhub"
+	"github.com/Azure/azure-sdk-for-go/services/preview/eventhub/mgmt/2018-01-01-preview/eventhub"
 	"github.com/hashicorp/go-azure-helpers/response"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -63,6 +63,11 @@ func resourceArmEventHubNamespace() *schema.Resource {
 					string(eventhub.Basic),
 					string(eventhub.Standard),
 				}, true),
+			},
+
+			"zone_redundant": {
+				Type:     schema.TypeBool,
+				Optional: true,
 			},
 
 			"capacity": {
@@ -231,6 +236,10 @@ func resourceArmEventHubNamespaceCreateUpdate(d *schema.ResourceData, meta inter
 		parameters.EHNamespaceProperties.MaximumThroughputUnits = utils.Int32(int32(v.(int)))
 	}
 
+	if v, ok := d.GetOk("zone_redundant"); ok {
+		parameters.EHNamespaceProperties.ZoneRedundant = utils.Bool(v.(bool))
+	}
+
 	future, err := client.CreateOrUpdate(ctx, resGroup, name, parameters)
 	if err != nil {
 		return err
@@ -310,6 +319,9 @@ func resourceArmEventHubNamespaceRead(d *schema.ResourceData, meta interface{}) 
 	if props := resp.EHNamespaceProperties; props != nil {
 		d.Set("auto_inflate_enabled", props.IsAutoInflateEnabled)
 		d.Set("maximum_throughput_units", int(*props.MaximumThroughputUnits))
+
+		d.Set("kafka_enabled", props.KafkaEnabled)
+		d.Set("zone_redundant", props.ZoneRedundant)
 	}
 
 	ruleset, err := client.GetNetworkRuleSet(ctx, resGroup, name)
